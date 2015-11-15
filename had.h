@@ -173,11 +173,6 @@ inline void AddEdge(const AReal &c,
     v.soW = soW;
 }
 
-// Second-order edges (stores at the one with lower index so that we will always visit it)
-inline void AddSoEdge(const VertexId i, const VertexId j, const Real w) {
-    g_ADGraph->soEdges.coeffRef(std::min(i, j), std::max(i, j)) += w;
-}
-
 ////////////////////// Addition ///////////////////////////
 inline AReal operator+(const AReal &l, const AReal &r) {
     AReal ret = NewAReal(l.val + r.val);
@@ -379,16 +374,19 @@ inline Real GetAdjoint(const AReal &i, const AReal &j) {
     return g_ADGraph->soEdges.coeffRef(std::min(i.varId, j.varId), std::max(i.varId, j.varId));
 }
 
-inline void PushEdge(const ADEdge &foEdge, const ADEdge &soEdge) {
+inline void PushEdge(const ADEdge &foEdge, const ADEdge &soEdge, std::vector<Eigen::Triplet<Real> > &edgesToPush) {
     if (foEdge.to == soEdge.to) {
-        AddSoEdge(foEdge.to, foEdge.to, Real(2.0) * foEdge.w * soEdge.w);
+        edgesToPush.push_back(Eigen::Triplet<Real>(foEdge.to, foEdge.to, Real(2.0) * foEdge.w * soEdge.w));
     } else {
-        AddSoEdge(foEdge.to, soEdge.to, foEdge.w * soEdge.w);
+        edgesToPush.push_back(Eigen::Triplet<Real>(
+            std::min(foEdge.to, soEdge.to), 
+            std::max(foEdge.to, soEdge.to), foEdge.w * soEdge.w));
     }
 }
 
 inline void PropagateAdjoint() {
     g_ADGraph->soEdges.resize(g_ADGraph->vertices.size(), g_ADGraph->vertices.size());
+    std::vector<Eigen::Triplet<Real> > edgesToPush;
     // Any chance for SSE/AVX parallism?
     for (VertexId vid = g_ADGraph->vertices.size() - 1; vid > 0; vid--) {
         // Pushing
@@ -401,32 +399,31 @@ inline void PropagateAdjoint() {
         for (Eigen::SparseMatrix<Real>::InnerIterator it(g_ADGraph->soEdges, vid);it;++it) {
             ADEdge soEdge(it.index(), it.value());
             if (soEdge.to != vid) {
-                PushEdge(e1, soEdge);
+                PushEdge(e1, soEdge, edgesToPush);
                 if (e2.to != vid) {
-                    PushEdge(e2, soEdge);
+                    PushEdge(e2, soEdge, edgesToPush);
                 }
             } else { //soEdge.to == vid
-                AddSoEdge(e1.to, e1.to, e1.w * e1.w * soEdge.w);
+                edgesToPush.push_back(Eigen::Triplet<Real>(e1.to, e1.to, e1.w * e1.w * soEdge.w));
                 if (e2.to != vid) {
-                    AddSoEdge(e2.to, e2.to, e2.w * e2.w * soEdge.w);
-                    // e1 must exists if e2 is not empty
-                    AddSoEdge(e1.to, e2.to, 
-                        (e1.to == e2.to) ? 2.0 * e1.w * e2.w * soEdge.w : 
-                                                 e1.w * e2.w * soEdge.w);
+                    edgesToPush.push_back(Eigen::Triplet<Real>(e2.to, e2.to, e2.w * e2.w * soEdge.w));
+                    edgesToPush.push_back(Eigen::Triplet<Real>(
+                        std::min(e1.to, e2.to), std::max(e1.to, e2.to), 
+                        (e1.to == e2.to) ? (Real(2.0) * e1.w * e2.w * soEdge.w) :
+                                                       (e1.w * e2.w * soEdge.w)));
                 }
             }
         }
-        // delete edges here?
 
         Real a = vertex.w;
         if (a != Real(0.0)) {
             // Creating
             if (vertex.soW != Real(0.0)) {
                 if (e2.to == vid) { // single-edge
-                    AddSoEdge(e1.to, e1.to, a * vertex.soW);
+                    edgesToPush.push_back(Eigen::Triplet<Real>(e1.to, e1.to, a * vertex.soW));
                 } else {
-                    AddSoEdge(e1.to, e2.to, 
-                        (e1.to == e2.to) ? 2.0 * a * vertex.soW : a * vertex.soW);
+                    edgesToPush.push_back(Eigen::Triplet<Real>(std::min(e1.to, e2.to), std::max(e1.to, e2.to), 
+                        (e1.to == e2.to) ? 2.0 * a * vertex.soW : a * vertex.soW));
                 }
             }
 
@@ -437,6 +434,13 @@ inline void PropagateAdjoint() {
                 g_ADGraph->vertices[e2.to].w += a * e2.w;
             }
         }
+
+        for (int i = 0; i < (int)edgesToPush.size(); i++) {
+            Eigen::Triplet<Real> &triplet = edgesToPush[i];
+            g_ADGraph->soEdges.coeffRef(triplet.row(), triplet.col()) += triplet.value();
+        }
+        edgesToPush.clear();
+        // delete edges here?
     }
 }
 

@@ -40,7 +40,8 @@ Adept uses expression templates and implicit stored computation graph to better 
 For first derivatives computation, it can be faster than HAD because HAD does not use expression templates.  
 However, Adept does not support second derivatives.
 
-#### CppAD: http://www.coin-or.org/CppAD/ & ADOL-C: https://projects.coin-or.org/ADOL-C  
+#### CppAD: http://www.coin-or.org/CppAD/ 
+#### ADOL-C: https://projects.coin-or.org/ADOL-C  
 CppAD and ADOL-C store the whole computation graph with symbolic representation to compute the derivatives.  
 This makes them able to record the computation graph once, and feed it with different input variables to obtain derivatives at different points.  
 However, since the derivatives comptuation now requires a table lookup with the type of the symbol, they are less efficient compare to HAD.  

@@ -78,6 +78,8 @@
 #include <cmath>
 #include <Eigen/Sparse>
 
+namespace had {
+
 // Change the following line if you want to use single precision floats
 typedef double Real; 
 typedef unsigned int VertexId;
@@ -87,7 +89,7 @@ struct AReal;
 
 extern ADGraph* g_ADGraph;
 // Declare this in your .cpp source
-#define DECLARE_ADGRAPH() __thread ADGraph* g_ADGraph = 0;
+#define DECLARE_ADGRAPH() __thread had::ADGraph* g_ADGraph = 0;
 
 AReal NewAReal(const Real val);
 
@@ -430,5 +432,7 @@ inline void PropagateAdjoint() {
         }
     }
 }
+
+} //namespace had
 
 #endif // HAD_H__

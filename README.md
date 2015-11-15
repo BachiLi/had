@@ -7,6 +7,7 @@ Currently HAD does not support "checkpointing" which is important for very very 
 
 To compute the derivatives, declare a ADGraph object and rewrite your function with a special data-type "AReal":
 ```
+using namespace had;
 DECLARE_ADGRAPH();
 ...
 ADGraph adGraph;

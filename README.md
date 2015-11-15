@@ -32,7 +32,7 @@ The library depends on Eigen (http://eigen.tuxfamily.org/).
 Below is a quick comparison to other auto-diff libraries:
 
 Adept: http://www.met.reading.ac.uk/clouds/adept/  
-Adept uses expression templates and implicit stored computation graph to better utilize compiler optimization.
+Adept uses expression templates and implicit stored computation graph to better utilize compiler optimization.  
 For first derivatives computation, it can be faster than HAD because HAD does not use expression templates.
 However, Adept does not support second derivatives.
 
@@ -50,7 +50,7 @@ However, for second-order derivatives they also resort to interleaving between f
 In order to obtain a n-dimensional Hessian matrix, they have to run n forward-reverse passes of the same function, which results in many repeated computation.  
 They also do not utilize the symmetry of Hessian.
 
-autodiff.h: http://www.mitsuba-renderer.org/files/eigen/autodiff.h
+autodiff.h: http://www.mitsuba-renderer.org/files/eigen/autodiff.h  
 autodiff is a single header automatic differentiation library for C++ which can do first and second-order derivatives just like HAD.  
 However, autodiff uses forward-mode automatic differentiation which is known to be inefficient compare to reverse-mode when the output dimension is smaller than the input dimension (O(n^2) v.s. O(n) where n is the input dimension of the Hessian matrix).  
 The fact that HAD stores the derivatives coefficients in a STL vector also make it more efficient.  

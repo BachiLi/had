@@ -220,6 +220,11 @@ inline AReal& operator-=(AReal &l, const AReal &r) {
 inline AReal& operator-=(AReal &l, const Real r) {
     return (l = l - r);
 }
+inline AReal operator-(const AReal &x) {
+    AReal ret = NewAReal(-x.val);
+    AddEdge(ret, x, Real(-1.0), Real(0.0));
+    return ret;
+}
 ///////////////////////////////////////////////////////////
 
 ////////////////// Multiplication /////////////////////////

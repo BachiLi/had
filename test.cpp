@@ -52,7 +52,7 @@ void TestMinus() {
     AReal x1 = AReal(Real(2.0));
     AReal x2 = AReal(Real(3.0));
 
-    AReal y = x0 - x0 - x1 - x2;
+    AReal y = - x0 - x0 - x1 - x2;
     SetAdjoint(y, Real(1.0));
     PropagateAdjoint();
 
@@ -67,7 +67,7 @@ void TestMinus() {
     Real dydx1x2 = GetAdjoint(x1, x2);
     Real dydx2x2 = GetAdjoint(x2, x2);
 
-    NearEqualAssert(dydx0, Real(0.0));
+    NearEqualAssert(dydx0, Real(-2.0));
     NearEqualAssert(dydx1, Real(-1.0));
     NearEqualAssert(dydx2, Real(-1.0));
 
@@ -395,9 +395,9 @@ void TestCopy() {
 
     Real dydxx = GetAdjoint(x, x);
 
-    NearEqualAssert(dydx, Real(4.0) * x.val);
+    NearEqualAssert(dydx, Real(2.0) * x.val);
 
-    NearEqualAssert(dydxx, Real(4.0));
+    NearEqualAssert(dydxx, Real(2.0));
 }
 
 int main(int argc, char *argv[]) {

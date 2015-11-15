@@ -287,7 +287,7 @@ inline bool operator>(const AReal &l, const AReal &r) {
     return l.val > r.val;
 }
 inline bool operator>=(const AReal &l, const AReal &r) {
-    return l.val > r.val;
+    return l.val >= r.val;
 }
 inline bool operator==(const AReal &l, const AReal &r) {
     return l.val == r.val;

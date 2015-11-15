@@ -382,6 +382,24 @@ void TestACos() {
     NearEqualAssert(dydx1x1, - x1.val * acos(x0.val) / pow(Real(1.0) - x1.val * x1.val, Real(3.0) / Real(2.0)));
 }
 
+void TestCopy() {
+    ADGraph adGraph;
+
+    AReal x = AReal(Real(0.3));
+    AReal tmp = x;
+    AReal y = x * tmp;
+    SetAdjoint(y, Real(1.0));
+    PropagateAdjoint();
+
+    Real dydx = GetAdjoint(x);
+
+    Real dydxx = GetAdjoint(x, x);
+
+    NearEqualAssert(dydx, Real(2.0) * x.val);
+
+    NearEqualAssert(dydxx, Real(2.0));
+}
+
 int main(int argc, char *argv[]) {
     TestAdd();
     TestMinus();
@@ -396,6 +414,7 @@ int main(int argc, char *argv[]) {
     TestTan();
     TestASin();
     TestACos();
+    TestCopy();
     
     return 0;
 }

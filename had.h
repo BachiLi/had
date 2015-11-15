@@ -87,9 +87,9 @@ typedef unsigned int VertexId;
 struct ADGraph;
 struct AReal;
 
-extern ADGraph* g_ADGraph;
+extern __thread ADGraph* g_ADGraph;
 // Declare this in your .cpp source
-#define DECLARE_ADGRAPH() __thread had::ADGraph* g_ADGraph = 0;
+#define DECLARE_ADGRAPH() namespace had { __thread ADGraph* g_ADGraph = 0; }
 
 AReal NewAReal(const Real val);
 

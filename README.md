@@ -1,8 +1,8 @@
 ### HAD
 HAD is a single header C++ reverse-mode automatic differentiation library using operator overloading, with focus on second-order derivatives (Hessian).  
 It implements the edge_pushing algorithm (see "Hessian Matrices via Automatic Differentiation", Gower and Mello 2010) to efficiently compute the second derivatives.  
-The computation graph is built implicitly similar to the Adept library (http://www.met.reading.ac.uk/clouds/adept/), only the floating point weights are stored.  
-HAD stores the derivatives coefficients in a single STL vector while recording the function, reducing the number of memory allocation calls.  
+The computation graph is built implicitly similar to the Adept library (http://www.met.reading.ac.uk/clouds/adept/), where only the floating point weights are stored.  
+HAD stores the first and second order derivatives coefficients in a single STL vector while recording the function, reducing the number of memory allocation calls.  
 Currently HAD does not support "checkpointing" which is important for very very long functions.
 
 ### Usage

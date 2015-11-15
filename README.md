@@ -29,10 +29,11 @@ then we obtain the derivatives by calling the GetAdjoint function:
 double dzdx  = GetAdjoint(x);
 double dzdxy = GetAdjoint(x, y);
 ```
-Remember to clean up the adGraph object in the end if you want to use it again:
+remember to clean up the adGraph object in the end if you want to use it again.
 ```
 adGraph.Clear();
 ```
+Note that the edge_pushing algorithm requires all the independent variables (in the above case, x and y) to be declared before any computation happens, or the algorithm gives incorrect result.
 
 See test.cpp for more usage.  
 

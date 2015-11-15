@@ -94,6 +94,8 @@ extern __thread ADGraph* g_ADGraph;
 AReal NewAReal(const Real val);
 
 struct AReal {
+    AReal() {}
+
     AReal(const Real val) {
         *this = NewAReal(val);
     }

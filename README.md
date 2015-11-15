@@ -29,6 +29,10 @@ then we obtain the derivatives by calling the GetAdjoint function:
 double dzdx  = GetAdjoint(x);
 double dzdxy = GetAdjoint(x, y);
 ```
+Remember to clean up the adGraph object in the end if you want to use it again:
+```
+adGraph.Clear();
+```
 
 See test.cpp for more usage.  
 

@@ -139,7 +139,7 @@ struct ADGraph {
         g_ADGraph = this;
     }
 
-    void Clear() {
+    inline void Clear() {
         vertices.clear();
         soEdges.setZero();
     }
@@ -198,7 +198,7 @@ inline AReal& operator+=(AReal &l, const Real r) {
 }
 ///////////////////////////////////////////////////////////
 
-//////////////////// Subtraction //////////////////////////
+////////////////// Subtraction ////////////////////////////
 inline AReal operator-(const AReal &l, const AReal &r) {
     AReal ret = NewAReal(l.val - r.val);
     AddEdge(ret, l, r, Real(1.0), -Real(1.0), Real(0.0));

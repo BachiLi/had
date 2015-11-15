@@ -387,7 +387,7 @@ void TestCopy() {
 
     AReal x = AReal(Real(0.3));
     AReal tmp = x;
-    AReal y = x * tmp;
+    AReal y = x * tmp; // y = x^2
     SetAdjoint(y, Real(1.0));
     PropagateAdjoint();
 
@@ -395,9 +395,9 @@ void TestCopy() {
 
     Real dydxx = GetAdjoint(x, x);
 
-    NearEqualAssert(dydx, Real(2.0) * x.val);
+    NearEqualAssert(dydx, Real(4.0) * x.val);
 
-    NearEqualAssert(dydxx, Real(2.0));
+    NearEqualAssert(dydxx, Real(4.0));
 }
 
 int main(int argc, char *argv[]) {

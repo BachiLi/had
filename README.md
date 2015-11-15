@@ -5,7 +5,7 @@ HAD also stores the derivatives coefficients in a STL vector when recording the 
 Currently HAD does not support "checkpointing" which is important for very very long functions.
 
 
-To compute the derivatives, declare a ADGraph object and rewrite your function with a special data-type "AReal":
+To compute the derivatives, declare an ADGraph object and rewrite your function with a special data-type "AReal":
 ```
 using namespace had;
 DECLARE_ADGRAPH();

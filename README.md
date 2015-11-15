@@ -6,6 +6,8 @@ HAD stores the derivatives coefficients in a single STL vector while recording t
 Currently HAD does not support "checkpointing" which is important for very very long functions.
 
 ### Usage
+The library depends on Eigen (http://eigen.tuxfamily.org/).
+
 To compute the derivatives, declare an ADGraph object and rewrite your function with a special data-type "AReal":
 ```
 using namespace had;
@@ -29,14 +31,13 @@ double dzdxy = GetAdjoint(x, y);
 ```
 
 See test.cpp for more usage.  
-The library depends on Eigen (http://eigen.tuxfamily.org/).
 
 ### Comparison to other libraries
 Below is a quick comparison to other auto-diff libraries:
 
 #### Adept: http://www.met.reading.ac.uk/clouds/adept/  
 Adept uses expression templates and implicit stored computation graph to better utilize compiler optimization.  
-For first derivatives computation, it can be faster than HAD because HAD does not use expression templates.
+For first derivatives computation, it can be faster than HAD because HAD does not use expression templates.  
 However, Adept does not support second derivatives.
 
 #### CppAD: http://www.coin-or.org/CppAD/ & ADOL-C: https://projects.coin-or.org/ADOL-C  

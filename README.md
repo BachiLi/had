@@ -33,7 +33,7 @@ remember to clean up the adGraph object in the end if you want to use it again.
 ```
 adGraph.Clear();
 ```
-Note that the edge_pushing algorithm requires all the independent variables (in the above case, x and y) to be declared before any computation happens, or the algorithm gives incorrect result.
+Note that the edge_pushing algorithm requires all the independent variables (in the above case, x and y) to be declared and assigned values before any computation happens, or the algorithm gives incorrect result.
 
 See test.cpp for more usage.  
 

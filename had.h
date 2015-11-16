@@ -144,16 +144,19 @@ struct ADGraph {
     inline void Clear() {
         vertices.clear();
         soEdges.setZero();
+        incomingEdges.clear();
     }
 
     std::vector<ADVertex> vertices;
     Eigen::SparseMatrix<Real> soEdges;
+    std::vector<int> incomingEdges;
 };
 
 inline AReal NewAReal(const Real val) {
     std::vector<ADVertex> &vertices = g_ADGraph->vertices;
     VertexId newId = vertices.size();
     vertices.push_back(ADVertex(newId));
+    g_ADGraph->incomingEdges.push_back(0);
     return AReal(val, newId);
 }
 
@@ -162,6 +165,7 @@ inline void AddEdge(const AReal &c, const AReal &p,
     ADVertex &v = g_ADGraph->vertices[c.varId];
     v.e1 = ADEdge(p.varId, w);
     v.soW = soW;
+    g_ADGraph->incomingEdges[p.varId]++;
 }
 inline void AddEdge(const AReal &c, 
                     const AReal &p1, const AReal &p2, 
@@ -171,6 +175,8 @@ inline void AddEdge(const AReal &c,
     v.e1 = ADEdge(p1.varId, w1);
     v.e2 = ADEdge(p2.varId, w2);
     v.soW = soW;
+    g_ADGraph->incomingEdges[p1.varId]++;
+    g_ADGraph->incomingEdges[p2.varId]++;
 }
 
 ////////////////////// Addition ///////////////////////////
@@ -371,7 +377,7 @@ inline Real GetAdjoint(const AReal &v) {
 }
 
 inline Real GetAdjoint(const AReal &i, const AReal &j) {
-    return g_ADGraph->soEdges.coeffRef(std::min(i.varId, j.varId), std::max(i.varId, j.varId));
+    return g_ADGraph->soEdges.coeff(std::min(i.varId, j.varId), std::max(i.varId, j.varId));
 }
 
 inline void PushEdge(const ADEdge &foEdge, const ADEdge &soEdge, std::vector<Eigen::Triplet<Real> > &edgesToPush) {
@@ -386,6 +392,7 @@ inline void PushEdge(const ADEdge &foEdge, const ADEdge &soEdge, std::vector<Eig
 
 inline void PropagateAdjoint() {
     g_ADGraph->soEdges.resize(g_ADGraph->vertices.size(), g_ADGraph->vertices.size());
+    g_ADGraph->soEdges.reserve(Eigen::Map<Eigen::VectorXi>(&(g_ADGraph->incomingEdges[0]), g_ADGraph->incomingEdges.size()));
     std::vector<Eigen::Triplet<Real> > edgesToPush;
     // Any chance for SSE/AVX parallism?
     for (VertexId vid = g_ADGraph->vertices.size() - 1; vid > 0; vid--) {

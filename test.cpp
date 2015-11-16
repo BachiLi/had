@@ -86,7 +86,7 @@ void TestMultiply() {
     AReal x1 = AReal(Real(2.0));
     AReal x2 = AReal(Real(3.0));
 
-    AReal y = x0 * x0 * x1 * x2;
+    AReal y = x0 * x0 * x1 * x1 * x2;
     SetAdjoint(y, Real(1.0));
     PropagateAdjoint();
 
@@ -101,15 +101,15 @@ void TestMultiply() {
     Real dydx1x2 = GetAdjoint(x1, x2);
     Real dydx2x2 = GetAdjoint(x2, x2);
 
-    NearEqualAssert(dydx0, Real(2.0) * x0.val * x1.val * x2.val);
-    NearEqualAssert(dydx1, x0.val * x0.val * x2.val);
-    NearEqualAssert(dydx2, x0.val * x0.val * x1.val);
+    NearEqualAssert(dydx0, Real(2.0) * x0.val * x1.val * x1.val * x2.val);
+    NearEqualAssert(dydx1, Real(2.0) * x0.val * x0.val * x1.val * x2.val);
+    NearEqualAssert(dydx2, x0.val * x0.val * x1.val * x1.val);
 
-    NearEqualAssert(dydx0x0, Real(2.0) * x1.val * x2.val);
-    NearEqualAssert(dydx0x1, Real(2.0) * x0.val * x2.val);
-    NearEqualAssert(dydx0x2, Real(2.0) * x0.val * x1.val);
-    NearEqualAssert(dydx1x1, Real(0.0));
-    NearEqualAssert(dydx1x2, x0.val * x0.val);
+    NearEqualAssert(dydx0x0, Real(2.0) * x1.val * x1.val * x2.val);
+    NearEqualAssert(dydx0x1, Real(4.0) * x0.val * x1.val * x2.val);
+    NearEqualAssert(dydx0x2, Real(2.0) * x0.val * x1.val * x1.val);
+    NearEqualAssert(dydx1x1, Real(2.0) * x0.val * x0.val * x2.val);
+    NearEqualAssert(dydx1x2, Real(2.0) * x0.val * x0.val * x1.val);
     NearEqualAssert(dydx2x2, Real(0.0));
 }
 

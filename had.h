@@ -113,21 +113,26 @@ struct BTree {
         nodes.reserve(256);
     }
 
-    inline int Insert(const VertexId key, const Real val, int index = 0) {
-        if (index == -1 || index >= (int)nodes.size()) {
-            nodes.push_back(BTNode(key, val));
-            return nodes.size() - 1;
-        } else {
+    inline void Insert(const VertexId key, const Real val) {
+        int index = 0;
+        int *lastEdge = 0;
+        while (index >= 0 && index < (int)nodes.size()) {
             if (key == nodes[index].key) {
                 nodes[index].val += val;
+                return;
             } else if (key < nodes[index].key) {
-                nodes[index].left = Insert(key, val, nodes[index].left);
+                lastEdge = &(nodes[index].left);
+                index = nodes[index].left;
             } else {
-                nodes[index].right = Insert(key, val, nodes[index].right);
+                lastEdge = &(nodes[index].right);
+                index = nodes[index].right;
             }
-            return index;
         }
-        // shouldn't reach here
+
+        if (lastEdge) {
+            *lastEdge = nodes.size();
+        }
+        nodes.push_back(BTNode(key, val));
     }
 
     inline Real Query(const VertexId key, int index = 0) {

@@ -37,7 +37,6 @@
 
 #include <vector>
 #include <cmath>
-#include <unordered_map>
 
 namespace had {
 
@@ -97,6 +96,59 @@ struct ADVertex {
     Real soW;
 };
 
+struct BTNode {
+    BTNode() {}
+    BTNode(const VertexId key, const Real val) : key(key), val(val) {
+        left = right = - 1;
+    }
+
+    VertexId key;
+    Real val;
+    int left;
+    int right;
+};
+
+struct BTree {
+    BTree() {
+        nodes.reserve(256);
+    }
+
+    inline int Insert(const VertexId key, const Real val, int index = 0) {
+        if (index == -1 || index >= nodes.size()) {
+            nodes.push_back(BTNode(key, val));
+            return nodes.size() - 1;
+        } else {
+            if (key == nodes[index].key) {
+                nodes[index].val += val;
+            } else if (key < nodes[index].key) {
+                nodes[index].left = Insert(key, val, nodes[index].left);
+            } else {
+                nodes[index].right = Insert(key, val, nodes[index].right);
+            }
+            return index;
+        }
+        // shouldn't reach here
+    }
+
+    inline Real Query(const VertexId key, int index = 0) {
+        if (index == -1 || index >= nodes.size()) {
+            return Real(0.0);
+        } else {
+            if (key == nodes[index].key) {
+                return nodes[index].val;
+            } else if (key < nodes[index].key) {
+                return Query(key, nodes[index].left);
+            } else {
+                return Query(key, nodes[index].right);
+            }
+            // shouldn't reach here
+        }
+        // shouldn't reach here
+    }
+
+    std::vector<BTNode> nodes;
+};
+
 struct ADGraph {
     ADGraph() {
         g_ADGraph = this;
@@ -108,8 +160,7 @@ struct ADGraph {
     }
 
     std::vector<ADVertex> vertices;
-    // for each vertex, stores a hash map that maps from the parent vertices to edge weight
-    std::vector<std::unordered_map<VertexId, Real> > soEdges;
+    std::vector<BTree> soEdges;
 };
 
 inline AReal NewAReal(const Real val) {
@@ -333,15 +384,15 @@ inline Real GetAdjoint(const AReal &v) {
 }
 
 inline Real GetAdjoint(const AReal &i, const AReal &j) {
-    return g_ADGraph->soEdges[std::max(i.varId, j.varId)][std::min(i.varId, j.varId)];
+    return g_ADGraph->soEdges[std::max(i.varId, j.varId)].Query(std::min(i.varId, j.varId));
 }
 
 inline void PushEdge(const ADEdge &foEdge, const ADEdge &soEdge) {
     if (foEdge.to == soEdge.to) {
-        g_ADGraph->soEdges[foEdge.to][foEdge.to] += Real(2.0) * foEdge.w * soEdge.w;
+        g_ADGraph->soEdges[foEdge.to].Insert(foEdge.to, Real(2.0) * foEdge.w * soEdge.w);
     } else {
-        g_ADGraph->soEdges[std::max(foEdge.to, soEdge.to)][std::min(foEdge.to, soEdge.to)] += 
-            foEdge.w * soEdge.w;
+        g_ADGraph->soEdges[std::max(foEdge.to, soEdge.to)].Insert(
+            std::min(foEdge.to, soEdge.to), foEdge.w * soEdge.w);
     }
 }
 
@@ -357,39 +408,39 @@ inline void PropagateAdjoint() {
             continue;
         }
 
-        std::unordered_map<VertexId, Real> &hashMap = g_ADGraph->soEdges[vid];
-        std::unordered_map<VertexId, Real>::iterator it;
-        for (it = hashMap.begin(); it != hashMap.end(); it++) {
-            ADEdge soEdge(it->first, it->second);
+        BTree &btree = g_ADGraph->soEdges[vid];
+        std::vector<BTNode>::iterator it;
+        for (it = btree.nodes.begin(); it != btree.nodes.end(); it++) {
+            ADEdge soEdge(it->key, it->val);
             if (soEdge.to != vid) {
                 PushEdge(e1, soEdge);
                 if (e2.to != vid) {
                     PushEdge(e2, soEdge);
                 }
             } else { //soEdge.to == vid
-                g_ADGraph->soEdges[e1.to][e1.to] += e1.w * e1.w * soEdge.w;
+                g_ADGraph->soEdges[e1.to].Insert(e1.to, e1.w * e1.w * soEdge.w);
                 if (e2.to != vid) {
-                    g_ADGraph->soEdges[e2.to][e2.to] += e2.w * e2.w * soEdge.w;
-                    g_ADGraph->soEdges[std::max(e1.to, e2.to)][std::min(e1.to, e2.to)] += 
+                    g_ADGraph->soEdges[e2.to].Insert(e2.to, e2.w * e2.w * soEdge.w);
+                    g_ADGraph->soEdges[std::max(e1.to, e2.to)].Insert(std::min(e1.to, e2.to), 
                         (e1.to == e2.to) ? (Real(2.0) * e1.w * e2.w * soEdge.w) :
-                                                       (e1.w * e2.w * soEdge.w);
+                                                       (e1.w * e2.w * soEdge.w));
                 }
             }
         }
 
-        // release memory of hashMap?
+        // release memory?
 
         Real a = vertex.w;
         if (a != Real(0.0)) {
             // Creating
             if (vertex.soW != Real(0.0)) {
                 if (e2.to == vid) { // single-edge
-                    g_ADGraph->soEdges[e1.to][e1.to] += a * vertex.soW;
+                    g_ADGraph->soEdges[e1.to].Insert(e1.to, a * vertex.soW);
                 } else if (e1.to == e2.to) {
-                    g_ADGraph->soEdges[e1.to][e1.to] += 2.0 * a * vertex.soW;
+                    g_ADGraph->soEdges[e1.to].Insert(e1.to, 2.0 * a * vertex.soW);
                 } else {
-                    g_ADGraph->soEdges[std::max(e1.to, e2.to)][std::min(e1.to, e2.to)] += 
-                        a * vertex.soW;
+                    g_ADGraph->soEdges[std::max(e1.to, e2.to)].Insert(std::min(e1.to, e2.to),
+                        a * vertex.soW);
                 }
             }
 

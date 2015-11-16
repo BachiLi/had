@@ -5,8 +5,6 @@ HAD stores the first and second order derivatives coefficients in a single STL v
 Currently HAD does not support "checkpointing" which can be important for long functions.
 
 ### Usage
-The library depends on Eigen (http://eigen.tuxfamily.org/).
-
 To compute the derivatives, declare an ADGraph object and rewrite your function with a special data-type "AReal":
 ```
 #include "had.h"

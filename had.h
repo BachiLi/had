@@ -37,7 +37,7 @@
 
 #include <vector>
 #include <cmath>
-#include <Eigen/Sparse>
+#include <unordered_map>
 
 namespace had {
 
@@ -104,20 +104,18 @@ struct ADGraph {
 
     inline void Clear() {
         vertices.clear();
-        soEdges.setZero();
-        incomingEdges.clear();
+        soEdges.clear();
     }
 
     std::vector<ADVertex> vertices;
-    Eigen::SparseMatrix<Real> soEdges;
-    std::vector<int> incomingEdges;
+    // for each vertex, stores a hash map that maps from the parent vertices to edge weight
+    std::vector<std::unordered_map<VertexId, Real> > soEdges;
 };
 
 inline AReal NewAReal(const Real val) {
     std::vector<ADVertex> &vertices = g_ADGraph->vertices;
     VertexId newId = vertices.size();
     vertices.push_back(ADVertex(newId));
-    g_ADGraph->incomingEdges.push_back(0);
     return AReal(val, newId);
 }
 
@@ -126,7 +124,6 @@ inline void AddEdge(const AReal &c, const AReal &p,
     ADVertex &v = g_ADGraph->vertices[c.varId];
     v.e1 = ADEdge(p.varId, w);
     v.soW = soW;
-    g_ADGraph->incomingEdges[p.varId]++;
 }
 inline void AddEdge(const AReal &c, 
                     const AReal &p1, const AReal &p2, 
@@ -136,8 +133,6 @@ inline void AddEdge(const AReal &c,
     v.e1 = ADEdge(p1.varId, w1);
     v.e2 = ADEdge(p2.varId, w2);
     v.soW = soW;
-    g_ADGraph->incomingEdges[p1.varId]++;
-    g_ADGraph->incomingEdges[p2.varId]++;
 }
 
 ////////////////////// Addition ///////////////////////////
@@ -338,23 +333,20 @@ inline Real GetAdjoint(const AReal &v) {
 }
 
 inline Real GetAdjoint(const AReal &i, const AReal &j) {
-    return g_ADGraph->soEdges.coeff(std::min(i.varId, j.varId), std::max(i.varId, j.varId));
+    return g_ADGraph->soEdges[std::max(i.varId, j.varId)][std::min(i.varId, j.varId)];
 }
 
-inline void PushEdge(const ADEdge &foEdge, const ADEdge &soEdge, std::vector<Eigen::Triplet<Real> > &edgesToPush) {
+inline void PushEdge(const ADEdge &foEdge, const ADEdge &soEdge) {
     if (foEdge.to == soEdge.to) {
-        edgesToPush.push_back(Eigen::Triplet<Real>(foEdge.to, foEdge.to, Real(2.0) * foEdge.w * soEdge.w));
+        g_ADGraph->soEdges[foEdge.to][foEdge.to] += Real(2.0) * foEdge.w * soEdge.w;
     } else {
-        edgesToPush.push_back(Eigen::Triplet<Real>(
-            std::min(foEdge.to, soEdge.to), 
-            std::max(foEdge.to, soEdge.to), foEdge.w * soEdge.w));
+        g_ADGraph->soEdges[std::max(foEdge.to, soEdge.to)][std::min(foEdge.to, soEdge.to)] += 
+            foEdge.w * soEdge.w;
     }
 }
 
 inline void PropagateAdjoint() {
-    g_ADGraph->soEdges.resize(g_ADGraph->vertices.size(), g_ADGraph->vertices.size());
-    g_ADGraph->soEdges.reserve(Eigen::Map<Eigen::VectorXi>(&(g_ADGraph->incomingEdges[0]), g_ADGraph->incomingEdges.size()));
-    std::vector<Eigen::Triplet<Real> > edgesToPush;
+    g_ADGraph->soEdges.resize(g_ADGraph->vertices.size());
     // Any chance for SSE/AVX parallism?
     for (VertexId vid = g_ADGraph->vertices.size() - 1; vid > 0; vid--) {
         // Pushing
@@ -364,34 +356,40 @@ inline void PropagateAdjoint() {
         if (e1.to == vid) {
             continue;
         }
-        for (Eigen::SparseMatrix<Real>::InnerIterator it(g_ADGraph->soEdges, vid);it;++it) {
-            ADEdge soEdge(it.index(), it.value());
+
+        std::unordered_map<VertexId, Real> &hashMap = g_ADGraph->soEdges[vid];
+        std::unordered_map<VertexId, Real>::iterator it;
+        for (it = hashMap.begin(); it != hashMap.end(); it++) {
+            ADEdge soEdge(it->first, it->second);
             if (soEdge.to != vid) {
-                PushEdge(e1, soEdge, edgesToPush);
+                PushEdge(e1, soEdge);
                 if (e2.to != vid) {
-                    PushEdge(e2, soEdge, edgesToPush);
+                    PushEdge(e2, soEdge);
                 }
             } else { //soEdge.to == vid
-                edgesToPush.push_back(Eigen::Triplet<Real>(e1.to, e1.to, e1.w * e1.w * soEdge.w));
+                g_ADGraph->soEdges[e1.to][e1.to] += e1.w * e1.w * soEdge.w;
                 if (e2.to != vid) {
-                    edgesToPush.push_back(Eigen::Triplet<Real>(e2.to, e2.to, e2.w * e2.w * soEdge.w));
-                    edgesToPush.push_back(Eigen::Triplet<Real>(
-                        std::min(e1.to, e2.to), std::max(e1.to, e2.to), 
+                    g_ADGraph->soEdges[e2.to][e2.to] += e2.w * e2.w * soEdge.w;
+                    g_ADGraph->soEdges[std::max(e1.to, e2.to)][std::min(e1.to, e2.to)] += 
                         (e1.to == e2.to) ? (Real(2.0) * e1.w * e2.w * soEdge.w) :
-                                                       (e1.w * e2.w * soEdge.w)));
+                                                       (e1.w * e2.w * soEdge.w);
                 }
             }
         }
+
+        // release memory of hashMap?
 
         Real a = vertex.w;
         if (a != Real(0.0)) {
             // Creating
             if (vertex.soW != Real(0.0)) {
                 if (e2.to == vid) { // single-edge
-                    edgesToPush.push_back(Eigen::Triplet<Real>(e1.to, e1.to, a * vertex.soW));
+                    g_ADGraph->soEdges[e1.to][e1.to] += a * vertex.soW;
+                } else if (e1.to == e2.to) {
+                    g_ADGraph->soEdges[e1.to][e1.to] += 2.0 * a * vertex.soW;
                 } else {
-                    edgesToPush.push_back(Eigen::Triplet<Real>(std::min(e1.to, e2.to), std::max(e1.to, e2.to), 
-                        (e1.to == e2.to) ? 2.0 * a * vertex.soW : a * vertex.soW));
+                    g_ADGraph->soEdges[std::max(e1.to, e2.to)][std::min(e1.to, e2.to)] += 
+                        a * vertex.soW;
                 }
             }
 
@@ -402,13 +400,6 @@ inline void PropagateAdjoint() {
                 g_ADGraph->vertices[e2.to].w += a * e2.w;
             }
         }
-
-        for (int i = 0; i < (int)edgesToPush.size(); i++) {
-            Eigen::Triplet<Real> &triplet = edgesToPush[i];
-            g_ADGraph->soEdges.coeffRef(triplet.row(), triplet.col()) += triplet.value();
-        }
-        edgesToPush.clear();
-        // delete edges here?
     }
 }
 

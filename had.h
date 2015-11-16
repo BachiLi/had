@@ -114,7 +114,7 @@ struct BTree {
     }
 
     inline int Insert(const VertexId key, const Real val, int index = 0) {
-        if (index == -1 || index >= nodes.size()) {
+        if (index == -1 || index >= (int)nodes.size()) {
             nodes.push_back(BTNode(key, val));
             return nodes.size() - 1;
         } else {
@@ -131,7 +131,7 @@ struct BTree {
     }
 
     inline Real Query(const VertexId key, int index = 0) {
-        if (index == -1 || index >= nodes.size()) {
+        if (index == -1 || index >= (int)nodes.size()) {
             return Real(0.0);
         } else {
             if (key == nodes[index].key) {

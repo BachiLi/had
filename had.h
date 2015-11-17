@@ -100,21 +100,52 @@ struct BTNode {
     BTNode() {}
     BTNode(const VertexId key, const Real val) : key(key), val(val) {
         left = right = - 1;
+        level = 1;
     }
 
     VertexId key;
     Real val;
     int left;
     int right;
+    int level;
 };
 
 struct BTree {
     BTree() {
         nodes.reserve(256);
+        root = 0;
+    }
+
+    inline void Skew() {
+        if (nodes.size() == 0 ||
+            nodes[root].left == -1) {
+            return;
+        }
+        if (nodes[nodes[root].left].level == nodes[root].level) {
+            int l = nodes[root].left;
+            nodes[root].left = nodes[l].right;
+            nodes[l].right = root;
+            root = l;
+        }
+    }
+
+    inline void Split() {
+        if (nodes.size() == 0 ||
+            nodes[root].right == -1 ||
+            nodes[nodes[root].right].right == -1) {
+            return;
+        }
+        if (nodes[root].level == nodes[nodes[nodes[root].right].right].level) {
+            int r = nodes[root].right;
+            nodes[root].right = nodes[r].left;
+            nodes[r].left = root;
+            nodes[r].level++;
+            root = r;
+        }
     }
 
     inline void Insert(const VertexId key, const Real val) {
-        int index = 0;
+        int index = root;
         int *lastEdge = 0;
         while (index >= 0 && index < (int)nodes.size()) {
             if (key == nodes[index].key) {
@@ -133,25 +164,27 @@ struct BTree {
             *lastEdge = nodes.size();
         }
         nodes.push_back(BTNode(key, val));
+
+        Skew();
+        Split();
     }
 
-    inline Real Query(const VertexId key, int index = 0) {
-        if (index == -1 || index >= (int)nodes.size()) {
-            return Real(0.0);
-        } else {
+    inline Real Query(const VertexId key) {
+        int index = root;
+        while (index >= 0 && index < (int)nodes.size()) {
             if (key == nodes[index].key) {
                 return nodes[index].val;
             } else if (key < nodes[index].key) {
-                return Query(key, nodes[index].left);
+                index = nodes[index].left;
             } else {
-                return Query(key, nodes[index].right);
+                index = nodes[index].right;
             }
-            // shouldn't reach here
         }
-        // shouldn't reach here
+        return Real(0.0);
     }
 
     std::vector<BTNode> nodes;
+    int root;
 };
 
 struct ADGraph {

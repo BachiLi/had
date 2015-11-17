@@ -147,21 +147,21 @@ struct BTree {
 
     inline void Insert(const VertexId key, const Real val) {
         int index = root;
-        int *lastEdge = 0;
-        while (index >= 0 && index < (int)nodes.size()) {
-            if (key == nodes[index].key) {
-                nodes[index].val += val;
-                return;
-            } else if (key < nodes[index].key) {
-                lastEdge = &(nodes[index].left);
-                index = nodes[index].left;
-            } else {
-                lastEdge = &(nodes[index].right);
-                index = nodes[index].right;
-            }
-        }
+        if (nodes.size() > 0) {
+            int *lastEdge;
+            do {
+                if (key == nodes[index].key) {
+                    nodes[index].val += val;
+                    return;
+                } else if (key < nodes[index].key) {
+                    lastEdge = &(nodes[index].left);
+                    index = nodes[index].left;
+                } else {
+                    lastEdge = &(nodes[index].right);
+                    index = nodes[index].right;
+                }
+            } while (index >= 0);
 
-        if (lastEdge) {
             *lastEdge = nodes.size();
         }
         nodes.push_back(BTNode(key, val));

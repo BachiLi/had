@@ -351,6 +351,9 @@ inline bool operator==(const AReal &l, const AReal &r) {
 ///////////////////////////////////////////////////////////
 
 //////////////// Misc functions ///////////////////////////
+inline Real square(const Real x) {
+    return x * x;
+}
 inline AReal square(const AReal &x) {
     Real sqX = x.val * x.val;
     AReal ret = NewAReal(sqX);

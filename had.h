@@ -195,10 +195,12 @@ struct ADGraph {
     inline void Clear() {
         vertices.clear();
         soEdges.clear();
+        selfSoEdges.clear();
     }
 
     std::vector<ADVertex> vertices;
     std::vector<BTree> soEdges;
+    std::vector<Real> selfSoEdges;
 };
 
 inline AReal NewAReal(const Real val) {
@@ -422,12 +424,17 @@ inline Real GetAdjoint(const AReal &v) {
 }
 
 inline Real GetAdjoint(const AReal &i, const AReal &j) {
-    return g_ADGraph->soEdges[std::max(i.varId, j.varId)].Query(std::min(i.varId, j.varId));
+    if (i.varId == j.varId) {
+        return g_ADGraph->selfSoEdges[i.varId];
+    } else {
+        return g_ADGraph->soEdges[std::max(i.varId, j.varId)].Query(std::min(i.varId, j.varId));
+    }
 }
 
 inline void PushEdge(const ADEdge &foEdge, const ADEdge &soEdge) {
     if (foEdge.to == soEdge.to) {
-        g_ADGraph->soEdges[foEdge.to].Insert(foEdge.to, Real(2.0) * foEdge.w * soEdge.w);
+        //g_ADGraph->soEdges[foEdge.to].Insert(foEdge.to, Real(2.0) * foEdge.w * soEdge.w);
+        g_ADGraph->selfSoEdges[foEdge.to] += Real(2.0) * foEdge.w * soEdge.w;
     } else {
         g_ADGraph->soEdges[std::max(foEdge.to, soEdge.to)].Insert(
             std::min(foEdge.to, soEdge.to), foEdge.w * soEdge.w);
@@ -436,6 +443,7 @@ inline void PushEdge(const ADEdge &foEdge, const ADEdge &soEdge) {
 
 inline void PropagateAdjoint() {
     g_ADGraph->soEdges.resize(g_ADGraph->vertices.size());
+    g_ADGraph->selfSoEdges.resize(g_ADGraph->vertices.size(), Real(0.0));
     // Any chance for SSE/AVX parallism?
     for (VertexId vid = g_ADGraph->vertices.size() - 1; vid > 0; vid--) {
         // Pushing
@@ -450,18 +458,21 @@ inline void PropagateAdjoint() {
         std::vector<BTNode>::iterator it;
         for (it = btree.nodes.begin(); it != btree.nodes.end(); it++) {
             ADEdge soEdge(it->key, it->val);
-            if (soEdge.to != vid) {
-                PushEdge(e1, soEdge);
-                if (e2.to != vid) {
-                    PushEdge(e2, soEdge);
-                }
-            } else { //soEdge.to == vid
-                g_ADGraph->soEdges[e1.to].Insert(e1.to, e1.w * e1.w * soEdge.w);
-                if (e2.to != vid) {
-                    g_ADGraph->soEdges[e2.to].Insert(e2.to, e2.w * e2.w * soEdge.w);
+            PushEdge(e1, soEdge);
+            if (e2.to != vid) {
+                PushEdge(e2, soEdge);
+            }
+        }
+        if (g_ADGraph->selfSoEdges[vid] != Real(0.0)) {
+            //g_ADGraph->soEdges[e1.to].Insert(e1.to, e1.w * e1.w * soEdge.w);
+            g_ADGraph->selfSoEdges[e1.to] += e1.w * e1.w * g_ADGraph->selfSoEdges[vid];
+            if (e2.to != vid) {
+                g_ADGraph->selfSoEdges[e2.to] += e2.w * e2.w * g_ADGraph->selfSoEdges[vid];
+                if (e1.to == e2.to) {
+                    g_ADGraph->selfSoEdges[e2.to] += Real(2.0) * e1.w * e2.w * g_ADGraph->selfSoEdges[vid];
+                } else {
                     g_ADGraph->soEdges[std::max(e1.to, e2.to)].Insert(std::min(e1.to, e2.to), 
-                        (e1.to == e2.to) ? (Real(2.0) * e1.w * e2.w * soEdge.w) :
-                                                       (e1.w * e2.w * soEdge.w));
+                                                   e1.w * e2.w * g_ADGraph->selfSoEdges[vid]);
                 }
             }
         }
@@ -473,9 +484,10 @@ inline void PropagateAdjoint() {
             // Creating
             if (vertex.soW != Real(0.0)) {
                 if (e2.to == vid) { // single-edge
-                    g_ADGraph->soEdges[e1.to].Insert(e1.to, a * vertex.soW);
+                    g_ADGraph->selfSoEdges[e1.to] += a * vertex.soW;
                 } else if (e1.to == e2.to) {
-                    g_ADGraph->soEdges[e1.to].Insert(e1.to, 2.0 * a * vertex.soW);
+                    g_ADGraph->selfSoEdges[e1.to] += 2.0 * a * vertex.soW;
+                    //g_ADGraph->soEdges[e1.to].Insert(e1.to, 2.0 * a * vertex.soW);
                 } else {
                     g_ADGraph->soEdges[std::max(e1.to, e2.to)].Insert(std::min(e1.to, e2.to),
                         a * vertex.soW);

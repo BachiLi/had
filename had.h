@@ -37,6 +37,7 @@
 
 #include <vector>
 #include <cmath>
+#include <iostream>
 
 namespace had {
 
@@ -350,6 +351,12 @@ inline bool operator==(const AReal &l, const AReal &r) {
 ///////////////////////////////////////////////////////////
 
 //////////////// Misc functions ///////////////////////////
+inline AReal square(const AReal &x) {
+    Real sqX = x.val * x.val;
+    AReal ret = NewAReal(sqX);
+    AddEdge(ret, x, Real(2.0) * x.val, Real(0.0));
+    return ret;
+}
 inline AReal sqrt(const AReal &x) {
     Real sqrtX = std::sqrt(x.val);
     Real invSqrtX = Real(1.0) / sqrtX;
@@ -464,7 +471,6 @@ inline void PropagateAdjoint() {
             }
         }
         if (g_ADGraph->selfSoEdges[vid] != Real(0.0)) {
-            //g_ADGraph->soEdges[e1.to].Insert(e1.to, e1.w * e1.w * soEdge.w);
             g_ADGraph->selfSoEdges[e1.to] += e1.w * e1.w * g_ADGraph->selfSoEdges[vid];
             if (e2.to != vid) {
                 g_ADGraph->selfSoEdges[e2.to] += e2.w * e2.w * g_ADGraph->selfSoEdges[vid];
@@ -487,7 +493,6 @@ inline void PropagateAdjoint() {
                     g_ADGraph->selfSoEdges[e1.to] += a * vertex.soW;
                 } else if (e1.to == e2.to) {
                     g_ADGraph->selfSoEdges[e1.to] += 2.0 * a * vertex.soW;
-                    //g_ADGraph->soEdges[e1.to].Insert(e1.to, 2.0 * a * vertex.soW);
                 } else {
                     g_ADGraph->soEdges[std::max(e1.to, e2.to)].Insert(std::min(e1.to, e2.to),
                         a * vertex.soW);

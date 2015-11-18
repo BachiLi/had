@@ -37,7 +37,8 @@
 
 #include <vector>
 #include <cmath>
-#include <iostream>
+
+//#define USE_AATREE
 
 namespace had {
 
@@ -101,22 +102,26 @@ struct BTNode {
     BTNode() {}
     BTNode(const VertexId key, const Real val) : key(key), val(val) {
         left = right = - 1;
+#ifdef USE_AATREE
         level = 1;
+#endif
     }
 
     VertexId key;
     Real val;
     int left;
     int right;
+#ifdef USE_AATREE
     int level;
+#endif
 };
 
 struct BTree {
     BTree() {
-        nodes.reserve(256);
+        nodes.reserve(32);
         root = 0;
     }
-
+#ifdef USE_AATREE
     inline void Skew() {
         if (nodes.size() == 0 ||
             nodes[root].left == -1) {
@@ -144,7 +149,7 @@ struct BTree {
             root = r;
         }
     }
-
+#endif
     inline void Insert(const VertexId key, const Real val) {
         int index = root;
         if (nodes.size() > 0) {
@@ -155,19 +160,19 @@ struct BTree {
                     return;
                 } else if (key < nodes[index].key) {
                     lastEdge = &(nodes[index].left);
-                    index = nodes[index].left;
                 } else {
                     lastEdge = &(nodes[index].right);
-                    index = nodes[index].right;
                 }
+                index = *lastEdge;
             } while (index >= 0);
 
             *lastEdge = nodes.size();
         }
         nodes.push_back(BTNode(key, val));
-
+#ifdef USE_AATREE
         Skew();
         Split();
+#endif
     }
 
     inline Real Query(const VertexId key) {

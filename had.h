@@ -478,7 +478,6 @@ inline void PropagateAdjoint() {
         }
     }
     g_ADGraph->selfSoEdges.resize(g_ADGraph->vertices.size(), Real(0.0));
-    std::vector<Real> aCoeff(g_ADGraph->vertices.size());
     // Any chance for SSE/AVX parallism?
 
     for (VertexId vid = g_ADGraph->vertices.size() - 1; vid > 0; vid--) {
@@ -515,11 +514,9 @@ inline void PropagateAdjoint() {
         // release memory?
 
         Real a = vertex.w;
-        aCoeff[vid] = a;
         if (a != Real(0.0)) {
             // Creating
             if (vertex.soW != Real(0.0)) {
-                Real a = aCoeff[vid];
                 if (e2.to == vid) { // single-edge
                     VertexId x = SingleEdgePropagate(e1.to, a);
                     g_ADGraph->selfSoEdges[x] += a * vertex.soW;

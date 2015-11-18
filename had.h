@@ -158,11 +158,8 @@ struct BTree {
                 if (key == nodes[index].key) {
                     nodes[index].val += val;
                     return;
-                } else if (key < nodes[index].key) {
-                    lastEdge = &(nodes[index].left);
-                } else {
-                    lastEdge = &(nodes[index].right);
                 }
+                lastEdge = &(nodes[index].left) + (key > nodes[index].key);
                 index = *lastEdge;
             } while (index >= 0);
 

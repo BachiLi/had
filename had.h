@@ -83,7 +83,6 @@ struct ADVertex {
     ADVertex(const VertexId newId) {
         e1 = e2 = ADEdge(newId);
         w = soW = Real(0.0);
-        soE1 = soE2 = newId;
     }
 
     // If ei.to == the id of this vertex, then the edge does not exist
@@ -96,7 +95,6 @@ struct ADVertex {
     // for vertex with two outgoing edges,
     // soW represents the second-order weight between the conntecting vertices (d^2f/dxdy)
     // the system assumes d^2f/dx^2 & d^2f/dy^2 are both zero in the two outgoing edges case to save memory
-    VertexId soE1, soE2;
     Real soW;
 };
 
@@ -220,65 +218,31 @@ inline AReal NewAReal(const Real val) {
     return AReal(val, newId);
 }
 
-inline void AddEdge(const AReal &c, const VertexId p, 
+inline void AddEdge(const AReal &c, const AReal &p, 
                     const Real w, const Real soW) {
     ADVertex &v = g_ADGraph->vertices[c.varId];
-    v.e1 = ADEdge(p, w);
-    v.soW = soW;
-    v.soE1 = p;
-}
-inline void AddEdge(const AReal &c, const VertexId p, 
-                    const Real w, const VertexId soP, const Real soW) {
-    ADVertex &v = g_ADGraph->vertices[c.varId];
-    v.e1 = ADEdge(p, w);
-    v.soW = soW;
-    v.soE1 = soP;
-}
-inline void AddEdge(const AReal &c, 
-                    const VertexId p1, const VertexId p2, 
-                    const Real w1, const Real w2,
-                    const Real soW) {
-    ADVertex &v = g_ADGraph->vertices[c.varId];
-    v.e1 = ADEdge(p1, w1);
-    v.e2 = ADEdge(p2, w2);
-    v.soE1 = p1;
-    v.soE2 = p2;
+    v.e1 = ADEdge(p.varId, w);
     v.soW = soW;
 }
 inline void AddEdge(const AReal &c, 
-                    const VertexId p1, const VertexId p2, 
+                    const AReal &p1, const AReal &p2, 
                     const Real w1, const Real w2,
-                    const VertexId soP1, const VertexId soP2, 
                     const Real soW) {
     ADVertex &v = g_ADGraph->vertices[c.varId];
-    v.e1 = ADEdge(p1, w1);
-    v.e2 = ADEdge(p2, w2);
-    v.soE1 = soP1;
-    v.soE2 = soP2;
+    v.e1 = ADEdge(p1.varId, w1);
+    v.e2 = ADEdge(p2.varId, w2);
     v.soW = soW;
-}
-
-inline VertexId SingleEdgeChain(VertexId vid, Real &w) {
-    const ADVertex &v = g_ADGraph->vertices[vid];
-    bool cont = v.e1.to != vid && v.e2.to == vid;
-    while(cont) {
-        vid = v.e1.to;
-        w *= v.e1.w;
-        const ADVertex &v = g_ADGraph->vertices[vid];
-        cont = v.e1.to != vid && v.e2.to == vid;
-    }
-    return vid;
 }
 
 ////////////////////// Addition ///////////////////////////
 inline AReal operator+(const AReal &l, const AReal &r) {
     AReal ret = NewAReal(l.val + r.val);
-    AddEdge(ret, l.varId, r.varId, Real(1.0), Real(1.0), Real(0.0));
+    AddEdge(ret, l, r, Real(1.0), Real(1.0), Real(0.0));
     return ret;
 }
 inline AReal operator+(const AReal &l, const Real r) {
     AReal ret = NewAReal(l.val + r);
-    AddEdge(ret, l.varId, Real(1.0), Real(0.0));
+    AddEdge(ret, l, Real(1.0), Real(0.0));
     return ret;
 }
 inline AReal operator+(const Real l, const AReal &r) {
@@ -295,17 +259,17 @@ inline AReal& operator+=(AReal &l, const Real r) {
 ////////////////// Subtraction ////////////////////////////
 inline AReal operator-(const AReal &l, const AReal &r) {
     AReal ret = NewAReal(l.val - r.val);
-    AddEdge(ret, l.varId, r.varId, Real(1.0), -Real(1.0), Real(0.0));
+    AddEdge(ret, l, r, Real(1.0), -Real(1.0), Real(0.0));
     return ret;
 }
 inline AReal operator-(const AReal &l, const Real r) {
     AReal ret = NewAReal(l.val - r);
-    AddEdge(ret, l.varId, Real(1.0), Real(0.0));
+    AddEdge(ret, l, Real(1.0), Real(0.0));
     return ret;
 }
 inline AReal operator-(const Real l, const AReal &r) {
     AReal ret = NewAReal(l - r.val);
-    AddEdge(ret, r.varId, Real(-1.0), Real(0.0));
+    AddEdge(ret, r, Real(-1.0), Real(0.0));
     return ret;
 }
 inline AReal& operator-=(AReal &l, const AReal &r) {
@@ -316,7 +280,7 @@ inline AReal& operator-=(AReal &l, const Real r) {
 }
 inline AReal operator-(const AReal &x) {
     AReal ret = NewAReal(-x.val);
-    AddEdge(ret, x.varId, Real(-1.0), Real(0.0));
+    AddEdge(ret, x, Real(-1.0), Real(0.0));
     return ret;
 }
 ///////////////////////////////////////////////////////////
@@ -324,15 +288,12 @@ inline AReal operator-(const AReal &x) {
 ////////////////// Multiplication /////////////////////////
 inline AReal operator*(const AReal &l, const AReal &r) {
     AReal ret = NewAReal(l.val * r.val);
-    Real w(1.0);
-    VertexId lv = SingleEdgeChain(l.varId, w);
-    VertexId rv = SingleEdgeChain(r.varId, w);
-    AddEdge(ret, l.varId, r.varId, r.val, l.val, lv, rv, w);
+    AddEdge(ret, l, r, r.val, l.val, Real(1.0));
     return ret;
 }
 inline AReal operator*(const AReal &l, const Real r) {
     AReal ret = NewAReal(l.val * r);
-    AddEdge(ret, l.varId, r, Real(0.0));
+    AddEdge(ret, l, r, Real(0.0));
     return ret;
 }
 inline AReal operator*(const Real l, const AReal &r) {
@@ -352,9 +313,7 @@ inline AReal Inv(const AReal &x) {
     Real invXSq = invX * invX;
     Real invXCu = invXSq * invX;
     AReal ret = NewAReal(invX);
-    Real w = Real(2.0) * invXCu;
-    VertexId xv = SingleEdgeChain(x.varId, w);
-    AddEdge(ret, x.varId, -invXSq, xv, w);
+    AddEdge(ret, x, -invXSq, Real(2.0) * invXCu);
     return ret;
 }
 inline Real Inv(const Real x) {
@@ -405,58 +364,46 @@ inline Real square(const Real x) {
 inline AReal square(const AReal &x) {
     Real sqX = x.val * x.val;
     AReal ret = NewAReal(sqX);
-    AddEdge(ret, x.varId, Real(2.0) * x.val, Real(0.0));
+    AddEdge(ret, x, Real(2.0) * x.val, Real(0.0));
     return ret;
 }
 inline AReal sqrt(const AReal &x) {
     Real sqrtX = std::sqrt(x.val);
     Real invSqrtX = Real(1.0) / sqrtX;
     AReal ret = NewAReal(sqrtX);
-    Real w = - Real(0.25) * invSqrtX / x.val;
-    VertexId xv = SingleEdgeChain(x.varId, w);
-    AddEdge(ret, x.varId, Real(0.5) * invSqrtX, xv, w);
+    AddEdge(ret, x, Real(0.5) * invSqrtX, - Real(0.25) * invSqrtX / x.val);
     return ret;
 }
 inline AReal pow(const AReal &x, const Real a) {
     Real powX = std::pow(x.val, a);
     AReal ret = NewAReal(powX);
-    Real w = a * (a - Real(1.0)) * std::pow(x.val, a - Real(2.0));
-    VertexId xv = SingleEdgeChain(x.varId, w);
-    AddEdge(ret, x.varId, a * std::pow(x.val, a - Real(1.0)),
-                          xv, w);
+    AddEdge(ret, x, a * std::pow(x.val, a - Real(1.0)),
+                    a * (a - Real(1.0)) * std::pow(x.val, a - Real(2.0)));
     return ret;
 }
 inline AReal exp(const AReal &x) {
     Real expX = std::exp(x.val);
     AReal ret = NewAReal(expX);
-    Real w = expX;
-    VertexId xv = SingleEdgeChain(x.varId, w);
-    AddEdge(ret, x.varId, expX, xv, w);
+    AddEdge(ret, x, expX, expX);
     return ret;
 }
 inline AReal log(const AReal &x) {
     Real logX = std::log(x.val);
     AReal ret = NewAReal(logX);
     Real invX = Real(1.0) / x.val;
-    Real w = - invX * invX;
-    VertexId xv = SingleEdgeChain(x.varId, w);
-    AddEdge(ret, x.varId, invX, xv, w);
+    AddEdge(ret, x, invX, - invX * invX);
     return ret;
 }
 inline AReal sin(const AReal &x) {
     Real sinX = std::sin(x.val);
     AReal ret = NewAReal(sinX);
-    Real w = -sinX;
-    VertexId xv = SingleEdgeChain(x.varId, w);
-    AddEdge(ret, x.varId, std::cos(x.val), xv, w);
+    AddEdge(ret, x, std::cos(x.val), -sinX);
     return ret;
 }
 inline AReal cos(const AReal &x) {
     Real cosX = std::cos(x.val);
     AReal ret = NewAReal(cosX);
-    Real w = -cosX;
-    VertexId xv = SingleEdgeChain(x.varId, w);
-    AddEdge(ret, x.varId, -std::sin(x.val), xv, w);
+    AddEdge(ret, x, -std::sin(x.val), -cosX);
     return ret;
 }
 inline AReal tan(const AReal &x) {
@@ -464,9 +411,7 @@ inline AReal tan(const AReal &x) {
     Real secX = Real(1.0) / std::cos(x.val);
     Real sec2X = secX * secX;
     AReal ret = NewAReal(tanX);
-    Real w = Real(2.0) * tanX * sec2X;
-    VertexId xv = SingleEdgeChain(x.varId, w);
-    AddEdge(ret, x.varId, sec2X, xv, w);
+    AddEdge(ret, x, sec2X, Real(2.0) * tanX * sec2X);
     return ret;
 }
 inline AReal asin(const AReal &x) {
@@ -474,9 +419,7 @@ inline AReal asin(const AReal &x) {
     AReal ret = NewAReal(asinX);
     Real tmp = Real(1.0) / (Real(1.0) - x.val * x.val);
     Real sqrtTmp = std::sqrt(tmp);
-    Real w = x.val * sqrtTmp * tmp;
-    VertexId xv = SingleEdgeChain(x.varId, w);
-    AddEdge(ret, x.varId, sqrtTmp, xv, w);
+    AddEdge(ret, x, sqrtTmp, x.val * sqrtTmp * tmp);
     return ret;
 }
 inline AReal acos(const AReal &x) {
@@ -484,9 +427,7 @@ inline AReal acos(const AReal &x) {
     AReal ret = NewAReal(acosX);
     Real tmp = Real(1.0) / (Real(1.0) - x.val * x.val);
     Real negSqrtTmp = -std::sqrt(tmp);
-    Real w = x.val * negSqrtTmp * tmp;
-    VertexId xv = SingleEdgeChain(x.varId, w);
-    AddEdge(ret, x.varId, negSqrtTmp, xv, w);
+    AddEdge(ret, x, negSqrtTmp, x.val * negSqrtTmp * tmp);
     return ret;
 }
 ///////////////////////////////////////////////////////////
@@ -527,8 +468,9 @@ inline void PropagateAdjoint() {
     }
     g_ADGraph->selfSoEdges.resize(g_ADGraph->vertices.size(), Real(0.0));
     // Any chance for SSE/AVX parallism?
+
+    // first pass: propagate gradients and create initial second order edges
     for (VertexId vid = g_ADGraph->vertices.size() - 1; vid > 0; vid--) {
-        // Pushing
         ADVertex &vertex = g_ADGraph->vertices[vid];
         ADEdge &e1 = vertex.e1;
         ADEdge &e2 = vertex.e2;
@@ -536,6 +478,37 @@ inline void PropagateAdjoint() {
             continue;
         }
 
+        Real a = vertex.w;
+        if (a != Real(0.0)) {
+            // Creating
+            if (vertex.soW != Real(0.0)) {
+                if (e2.to == vid) { // single-edge
+                    g_ADGraph->selfSoEdges[e1.to] += a * vertex.soW;
+                } else if (e1.to == e2.to) {
+                    g_ADGraph->selfSoEdges[e1.to] += 2.0 * a * vertex.soW;
+                } else {
+                    g_ADGraph->soEdges[std::max(e1.to, e2.to)].Insert(std::min(e1.to, e2.to),
+                        a * vertex.soW);
+                }
+            }
+
+            // Adjoint
+            vertex.w = Real(0.0);
+            g_ADGraph->vertices[e1.to].w += a * e1.w;
+            if (e2.to != vid) {
+                g_ADGraph->vertices[e2.to].w += a * e2.w;
+            }
+        }
+    }
+    for (VertexId vid = g_ADGraph->vertices.size() - 1; vid > 0; vid--) {
+        ADVertex &vertex = g_ADGraph->vertices[vid];
+        ADEdge &e1 = vertex.e1;
+        ADEdge &e2 = vertex.e2;
+        if (e1.to == vid) {
+            continue;
+        }
+
+        // Pushing
         BTree &btree = g_ADGraph->soEdges[vid];
         std::vector<BTNode>::iterator it;
         for (it = btree.nodes.begin(); it != btree.nodes.end(); it++) {
@@ -559,29 +532,6 @@ inline void PropagateAdjoint() {
         }
 
         // release memory?
-
-        Real a = vertex.w;
-        if (a != Real(0.0)) {
-            // Creating
-            if (vertex.soW != Real(0.0)) {
-                if (vertex.soE2 == vid) { // single-edge
-                    g_ADGraph->selfSoEdges[vertex.soE1] += a * vertex.soW;
-                } else if (vertex.soE1 == vertex.soE2) {
-                    g_ADGraph->selfSoEdges[vertex.soE1] += 2.0 * a * vertex.soW;
-                } else {
-                    g_ADGraph->soEdges[std::max(vertex.soE1, vertex.soE2)].Insert(
-                        std::min(vertex.soE1, vertex.soE2),
-                        a * vertex.soW);
-                }
-            }
-
-            // Adjoint
-            vertex.w = Real(0.0);
-            g_ADGraph->vertices[e1.to].w += a * e1.w;
-            if (e2.to != vid) {
-                g_ADGraph->vertices[e2.to].w += a * e2.w;
-            }
-        }
     }
 }
 

@@ -38,7 +38,7 @@
 #include <vector>
 #include <cmath>
 
-//#define USE_AATREE
+#define USE_AATREE
 
 namespace had {
 
@@ -127,7 +127,7 @@ struct BTree {
             nodes[root].left == -1) {
             return;
         }
-        if (nodes[nodes[root].left].level == nodes[root].level) {
+        while (nodes[nodes[root].left].level == nodes[root].level) {
             int l = nodes[root].left;
             nodes[root].left = nodes[l].right;
             nodes[l].right = root;
@@ -141,7 +141,7 @@ struct BTree {
             nodes[nodes[root].right].right == -1) {
             return;
         }
-        if (nodes[root].level == nodes[nodes[nodes[root].right].right].level) {
+        while (nodes[root].level == nodes[nodes[nodes[root].right].right].level) {
             int r = nodes[root].right;
             nodes[root].right = nodes[r].left;
             nodes[r].left = root;
@@ -518,15 +518,11 @@ inline void PropagateAdjoint() {
             // Creating
             if (vertex.soW != Real(0.0)) {
                 if (e2.to == vid) { // single-edge
-                    VertexId x = SingleEdgePropagate(e1.to, a);
-                    g_ADGraph->selfSoEdges[x] += a * vertex.soW;
+                    g_ADGraph->selfSoEdges[e1.to] += a * vertex.soW;
                 } else if (e1.to == e2.to) {
-                    VertexId x = SingleEdgePropagate(e1.to, a);
-                    g_ADGraph->selfSoEdges[x] += Real(2.0) * a * vertex.soW;
+                    g_ADGraph->selfSoEdges[e1.to] += Real(2.0) * a * vertex.soW;
                 } else {
-                    VertexId x = SingleEdgePropagate(e1.to, a);
-                    VertexId y = SingleEdgePropagate(e2.to, a);
-                    g_ADGraph->soEdges[std::max(x, y)].Insert(std::min(x, y),
+                    g_ADGraph->soEdges[std::max(e1.to, e2.to)].Insert(std::min(e1.to, e2.to),
                         a * vertex.soW);
                 }
             }

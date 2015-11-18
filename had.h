@@ -448,9 +448,20 @@ inline Real GetAdjoint(const AReal &i, const AReal &j) {
     }
 }
 
+inline VertexId SingleEdgePropagate(VertexId x, Real &a) {
+    bool cont = g_ADGraph->vertices[x].e1.to != x &&
+                g_ADGraph->vertices[x].e2.to == x;
+    while (cont) {
+        a *= g_ADGraph->vertices[x].e1.w;
+        x = g_ADGraph->vertices[x].e1.to;
+        cont = g_ADGraph->vertices[x].e1.to != x &&
+               g_ADGraph->vertices[x].e2.to == x;
+    }
+    return x;
+}
+
 inline void PushEdge(const ADEdge &foEdge, const ADEdge &soEdge) {
     if (foEdge.to == soEdge.to) {
-        //g_ADGraph->soEdges[foEdge.to].Insert(foEdge.to, Real(2.0) * foEdge.w * soEdge.w);
         g_ADGraph->selfSoEdges[foEdge.to] += Real(2.0) * foEdge.w * soEdge.w;
     } else {
         g_ADGraph->soEdges[std::max(foEdge.to, soEdge.to)].Insert(
@@ -467,9 +478,10 @@ inline void PropagateAdjoint() {
         }
     }
     g_ADGraph->selfSoEdges.resize(g_ADGraph->vertices.size(), Real(0.0));
+    std::vector<Real> aCoeff(g_ADGraph->vertices.size());
     // Any chance for SSE/AVX parallism?
 
-    // first pass: propagate gradients and create initial second order edges
+    // First pass: propagate gradients
     for (VertexId vid = g_ADGraph->vertices.size() - 1; vid > 0; vid--) {
         ADVertex &vertex = g_ADGraph->vertices[vid];
         ADEdge &e1 = vertex.e1;
@@ -479,19 +491,8 @@ inline void PropagateAdjoint() {
         }
 
         Real a = vertex.w;
+        aCoeff[vid] = a;
         if (a != Real(0.0)) {
-            // Creating
-            if (vertex.soW != Real(0.0)) {
-                if (e2.to == vid) { // single-edge
-                    g_ADGraph->selfSoEdges[e1.to] += a * vertex.soW;
-                } else if (e1.to == e2.to) {
-                    g_ADGraph->selfSoEdges[e1.to] += 2.0 * a * vertex.soW;
-                } else {
-                    g_ADGraph->soEdges[std::max(e1.to, e2.to)].Insert(std::min(e1.to, e2.to),
-                        a * vertex.soW);
-                }
-            }
-
             // Adjoint
             vertex.w = Real(0.0);
             g_ADGraph->vertices[e1.to].w += a * e1.w;
@@ -500,6 +501,33 @@ inline void PropagateAdjoint() {
             }
         }
     }
+    // Second pass: propagate single edge gradients
+    for (VertexId vid = g_ADGraph->vertices.size() - 1; vid > 0; vid--) {
+        ADVertex &vertex = g_ADGraph->vertices[vid];
+        ADEdge &e1 = vertex.e1;
+        ADEdge &e2 = vertex.e2;
+        if (e1.to == vid) {
+            continue;
+        }
+
+        // Creating
+        if (vertex.soW != Real(0.0)) {
+            Real a = aCoeff[vid];
+            if (e2.to == vid) { // single-edge
+                VertexId x = SingleEdgePropagate(e1.to, a);
+                g_ADGraph->selfSoEdges[x] += a * vertex.soW;
+            } else if (e1.to == e2.to) {
+                VertexId x = SingleEdgePropagate(e1.to, a);
+                g_ADGraph->selfSoEdges[x] += Real(2.0) * a * vertex.soW;
+            } else {
+                VertexId x = SingleEdgePropagate(e1.to, a);
+                VertexId y = SingleEdgePropagate(e2.to, a);
+                g_ADGraph->soEdges[std::max(x, y)].Insert(std::min(x, y),
+                    a * vertex.soW);
+            }
+        }
+    }
+    // Third pass: propagate rest of the edges
     for (VertexId vid = g_ADGraph->vertices.size() - 1; vid > 0; vid--) {
         ADVertex &vertex = g_ADGraph->vertices[vid];
         ADEdge &e1 = vertex.e1;

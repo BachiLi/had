@@ -186,6 +186,11 @@ struct BTree {
         return Real(0.0);
     }
 
+    inline void Clear() {
+        nodes.clear();
+        root = 0;
+    }
+
     std::vector<BTNode> nodes;
     int root;
 };
@@ -454,7 +459,13 @@ inline void PushEdge(const ADEdge &foEdge, const ADEdge &soEdge) {
 }
 
 inline void PropagateAdjoint() {
-    g_ADGraph->soEdges.resize(g_ADGraph->vertices.size());
+    if (g_ADGraph->vertices.size() > g_ADGraph->soEdges.size()) {
+        g_ADGraph->soEdges.resize(g_ADGraph->vertices.size());
+    } else {
+        for (int i = 0; i < (int)g_ADGraph->soEdges.size(); i++) {
+            g_ADGraph->soEdges[i].Clear();
+        }
+    }
     g_ADGraph->selfSoEdges.resize(g_ADGraph->vertices.size(), Real(0.0));
     // Any chance for SSE/AVX parallism?
     for (VertexId vid = g_ADGraph->vertices.size() - 1; vid > 0; vid--) {

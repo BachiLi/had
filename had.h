@@ -491,10 +491,15 @@ inline void PropagateAdjoint() {
         // Pushing
         BTree &btree = g_ADGraph->soEdges[vid];
         std::vector<BTNode>::iterator it;
-        for (it = btree.nodes.begin(); it != btree.nodes.end(); it++) {
-            ADEdge soEdge(it->key, it->val);
-            PushEdge(e1, soEdge);
-            if (e2.to != vid) {
+        if (e2.to == vid) {
+            for (it = btree.nodes.begin(); it != btree.nodes.end(); it++) {
+                ADEdge soEdge(it->key, it->val);
+                PushEdge(e1, soEdge);
+            }
+        } else {
+            for (it = btree.nodes.begin(); it != btree.nodes.end(); it++) {
+                ADEdge soEdge(it->key, it->val);
+                PushEdge(e1, soEdge);
                 PushEdge(e2, soEdge);
             }
         }

@@ -37,8 +37,21 @@
 
 #include <vector>
 #include <cmath>
-
+#ifdef WIN32
+#define threadDefine thread_local
+#endif
+#ifdef __unix
 #define USE_AATREE
+#define threadDefine __thread
+#endif
+
+#include <vector>
+#include <cmath>
+#include <algorithm>
+
+#ifndef M_PI
+#define M_PI std::acos(-1)
+#endif
 
 namespace had {
 
@@ -49,9 +62,9 @@ typedef unsigned int VertexId;
 struct ADGraph;
 struct AReal;
 
-extern __thread ADGraph* g_ADGraph;
+extern threadDefine ADGraph* g_ADGraph;
 // Declare this in your .cpp source
-#define DECLARE_ADGRAPH() namespace had { __thread ADGraph* g_ADGraph = 0; }
+#define DECLARE_ADGRAPH() namespace had { threadDefine ADGraph* g_ADGraph = 0; }
 
 AReal NewAReal(const Real val);
 
